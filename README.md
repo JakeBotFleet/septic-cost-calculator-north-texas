@@ -1,9 +1,6 @@
 # Texas Septic Cost Estimator
 
-> **Ballpark cost estimator for TCEQ OSSF conventional septic work in rural North Texas.**
-> Forked from the [texas-septic-toolkit](https://github.com/TexasSepticEnthusiast/texas-septic-toolkit).
-> Built by [Out West Septic](https://outwestseptic.com) — Lone Camp, TX.
-> **TCEQ OSSF Installer I | License OS0041298** — Owner: James "Tanner" Coupland — 940.452.0598
+Ballpark cost estimator for TCEQ OSSF conventional septic work in rural North Texas. Forked from the [texas-septic-toolkit](https://github.com/TexasSepticEnthusiast/texas-septic-toolkit). Built by [Out West Septic](https://outwestseptic.com) in Lone Camp, TX. TCEQ OSSF Installer I, License OS0041298.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -34,7 +31,7 @@ The script outputs planning estimates for:
 
 ## What the estimates are (and aren't)
 
-**These are planning ranges**, not quotes. The script encodes Out West Septic's field experience in Palo Pinto County, Hood County, Erath County, Stephens County, Young County, Jack County, and Eastland County. Real quotes require a site visit.
+These are planning ranges, not quotes. The script encodes Out West Septic's field experience in Palo Pinto County, Hood County, Erath County, Stephens County, Young County, Jack County, and Eastland County. Real quotes require a site visit.
 
 The script does NOT:
 
@@ -51,9 +48,9 @@ Out West Septic installs in Palo Pinto, Hood, Erath, Stephens, Young, Jack, and 
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT. See [LICENSE](./LICENSE).
 
 ---
 
-*Out West Septic — outwestseptic.com — 940.452.0598 — TCEQ OSSF Installer I OS0041298 — Lone Camp, TX*
-*Serving Palo Pinto County, Mineral Wells, Graford, Possum Kingdom Lake, and rural North Texas.*
+Out West Septic, outwestseptic.com, 940.452.0598, TCEQ OSSF Installer I OS0041298, Lone Camp, TX
+Serving Palo Pinto County, Mineral Wells, Graford, Possum Kingdom Lake, and rural North Texas.
