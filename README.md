@@ -37,7 +37,7 @@ Input limits are software limits, not business assumptions:
 | Quantity | Greater than 0 through 1,000,000,000; up to 6 decimal places |
 | Unit price | $0 through $1,000,000,000,000; at most 2 decimal places |
 | Contingency | 0–1000 percent; up to 4 decimal places |
-| Project and item labels | 1–200 characters; no control characters |
+| Project and item labels | 1–200 characters; valid UTF-8 Unicode text without control characters |
 
 NaN, infinity, booleans, reversed price ranges, and unsupported precision are rejected.
 
@@ -45,7 +45,7 @@ NaN, infinity, booleans, reversed price ranges, and unsupported precision are re
 
 Use `--json PATH` or `--csv PATH`. JSON records the supplied values, each rounded line, subtotals, contingency, and totals as decimal strings. CSV uses separate item and total rows; labels beginning with spreadsheet formula markers receive an apostrophe prefix. JSON retains the original label.
 
-Existing files are preserved unless `--overwrite` is explicitly supplied. Export errors exit with status 2 without printing a successful estimate or export message. Parent directories must exist.
+Existing files require explicit `--overwrite`. The complete export is encoded before any file is opened. Overwrites are written and flushed to a temporary file in the destination directory, then atomically replace the old file; encoding, staging-write or replacement failures preserve the old bytes. Export errors exit with status 2 without printing a successful estimate or export message. Parent directories must exist.
 
 ```python
 from scripts.outwestseptic_cost_estimator import (
@@ -75,6 +75,6 @@ See the [source and estimate-review guide](wiki/Cost-Estimator-Reference.md) for
 python -m unittest discover -s tests -v
 ```
 
-Tests cover cent rounding, exact large values, invalid quantities and rates, CSV safety, real exports, failed writes, and preservation of existing files. CI runs Python 3.10 and 3.13.
+Tests cover cent rounding, exact large values, invalid quantities and rates, CSV safety, real exports, invalid Unicode, and preservation of existing exports during simulated partial-write, flush and replacement failures. CI runs Python 3.10 and 3.13.
 
 See the existing [license reference](LICENSE).

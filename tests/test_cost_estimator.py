@@ -5,10 +5,13 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from unittest.mock import patch
 from decimal import Decimal, localcontext
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import outwestseptic_cost_estimator as module
 from outwestseptic_cost_estimator import OutWestSepticCostEstimator, OutWestSepticCostLineItem
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "outwestseptic_cost_estimator.py"
@@ -153,6 +156,94 @@ class CliTests(unittest.TestCase):
     def test_help(self):
         result = self.run_cli("--help")
         self.assertEqual(result.returncode, 0, result.stderr)
+
+
+
+class ExportSafetyTests(unittest.TestCase):
+    formats = [("--json", "to_json"), ("--csv", "to_csv")]
+    base = ["--project", "Example", "--item", "Hours", "1", "1", "2"]
+
+    def run_in_process(self, args):
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with redirect_stdout(stdout), redirect_stderr(stderr), self.assertRaises(SystemExit) as failure:
+            module.main(args)
+        self.assertEqual(failure.exception.code, 2)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertNotIn("Traceback", stderr.getvalue())
+
+    def test_api_rejects_surrogates_but_accepts_unicode(self):
+        for value in ("bad" + chr(0xD800), "bad" + chr(0xDCFF)):
+            with self.assertRaisesRegex(ValueError, "UTF-8"):
+                module.OutWestSepticCostLineItem(value, 1, 1, 2)
+            with self.assertRaisesRegex(ValueError, "UTF-8"):
+                module.OutWestSepticCostEstimator.estimate(
+                    project=value, items=[module.OutWestSepticCostLineItem("Hours", 1, 1, 2)])
+        report = module.OutWestSepticCostEstimator.estimate(
+            project="Caf\u00e9 \U0001f69a",
+            items=[module.OutWestSepticCostLineItem("R\u00e9sum\u00e9", 1, 1, 2)])
+        self.assertEqual(json.loads(report.to_json())["project"], "Caf\u00e9 \U0001f69a")
+
+    def test_bad_unicode_preserves_original_export_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "original.export"
+            original = b"prior export\r\n\xff"
+            for flag, _ in self.formats:
+                for field, index in [("--project", 1), ("--item", 3)]:
+                    for surrogate in (0xD800, 0xDCFF):
+                        with self.subTest(format=flag, field=field, surrogate=surrogate):
+                            target.write_bytes(original)
+                            args = self.base.copy()
+                            args[index] = "Synthetic " + chr(surrogate)
+                            self.run_in_process(args + [flag, str(target), "--overwrite"])
+                            self.assertEqual(target.read_bytes(), original)
+                            self.assertEqual(list(Path(directory).iterdir()), [target])
+
+    def test_full_export_is_encoded_before_any_file_is_opened(self):
+        # A future serializer change must not bypass the pre-write encoding check.
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "original.export"
+            original = b"prior export"
+            for flag, serializer in self.formats:
+                for existing in (False, True):
+                    with self.subTest(format=flag, existing=existing):
+                        if existing:
+                            target.write_bytes(original)
+                        with patch.object(module.OutWestSepticCostEstimate, serializer, return_value=chr(0xD800)):
+                            self.run_in_process(self.base + [flag, str(target), "--overwrite"])
+                        if existing:
+                            self.assertEqual(target.read_bytes(), original)
+                        else:
+                            self.assertFalse(target.exists())
+                        self.assertEqual(list(Path(directory).iterdir()), [target] if existing else [])
+                        target.unlink(missing_ok=True)
+
+    def test_failed_atomic_overwrite_preserves_original_and_cleans_stage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "original.export"
+            original = b"prior export\r\n\xff"
+            real_temporary_file = module.tempfile.NamedTemporaryFile
+
+            def fail_after_partial_write(*args, **kwargs):
+                output = real_temporary_file(*args, **kwargs)
+                real_write = output.write
+                def partial_write(payload):
+                    real_write(payload[:7])
+                    raise OSError("simulated partial disk write")
+                output.write = partial_write
+                return output
+
+            for flag, _ in self.formats:
+                for phase in ("write", "fsync", "replace"):
+                    with self.subTest(format=flag, failure=phase):
+                        target.write_bytes(original)
+                        if phase == "write":
+                            failure = patch.object(module.tempfile, "NamedTemporaryFile", side_effect=fail_after_partial_write)
+                        else:
+                            failure = patch.object(module.os, phase, side_effect=OSError("simulated " + phase + " failure"))
+                        with failure:
+                            self.run_in_process(self.base + [flag, str(target), "--overwrite"])
+                        self.assertEqual(target.read_bytes(), original)
+                        self.assertEqual(list(Path(directory).iterdir()), [target])
 
 
 if __name__ == "__main__":

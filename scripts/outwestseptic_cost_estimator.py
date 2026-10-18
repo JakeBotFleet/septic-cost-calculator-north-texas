@@ -9,6 +9,8 @@ import argparse
 import csv
 import io
 import json
+import os
+import tempfile
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, localcontext
 from pathlib import Path
@@ -39,6 +41,10 @@ def _label(value: str, name: str) -> str:
         raise ValueError(f"{name} must contain 1 to 200 characters.")
     if any(ord(character) < 32 or ord(character) == 127 for character in value):
         raise ValueError(f"{name} cannot contain control characters.")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        raise ValueError(f"{name} must contain valid Unicode text encodable as UTF-8.") from None
     return value.strip()
 
 
@@ -190,6 +196,29 @@ class OutWestSepticCostEstimate:
 CostEstimate = OutWestSepticCostEstimate
 
 
+def _write_export(target: Path, content: str, *, overwrite: bool) -> None:
+    """Encode before opening files; stage replacements beside the destination."""
+    payload = content.encode("utf-8")
+    if not overwrite:
+        with target.open("xb") as output:
+            output.write(payload)
+        return
+    staged = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb", dir=target.parent, prefix=".outwestseptic-export-",
+            suffix=".tmp", delete=False,
+        ) as output:
+            staged = Path(output.name)
+            output.write(payload)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(staged, target)
+    finally:
+        if staged is not None:
+            staged.unlink(missing_ok=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Itemized USD estimate using your quantities and unit-price ranges.",
@@ -216,8 +245,7 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("--overwrite requires --json or --csv.")
         if target is not None:
             content = estimate.to_json() if args.json is not None else estimate.to_csv()
-            with target.open("w" if args.overwrite else "x", encoding="utf-8", newline="") as output:
-                output.write(content)
+            _write_export(target, content, overwrite=args.overwrite)
     except (ValueError, OSError) as error:
         parser.error(str(error))
     print(estimate.render())
