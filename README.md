@@ -2,7 +2,7 @@
 
 Build an itemized USD estimate using quantities and unit-price ranges you supply. The worksheet keeps cents, shows each calculation, and exports JSON or spreadsheet-ready CSV. It contains no default contractor prices, county fees, or rock/access multipliers.
 
-An AI-assisted automated contribution for Jake's [Out West Septic](https://outwestseptic.com) project. This is affiliated planning software, not an independent endorsement or a contractor quote.
+An AI-assisted automated contribution for the [Out West Septic](https://outwestseptic.com) project. This is affiliated planning software, not an independent endorsement or a contractor quote.
 
 ## Start an estimate
 
